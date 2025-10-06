@@ -1,0 +1,147 @@
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+from sklearn import datasets
+from sklearn_som.som import SOM
+from sklearn.datasets import make_blobs, load_digits
+
+
+# Part 1: Random data in teh space
+x1=np.random.rand(1000)
+x2=np.random.rand(1000)
+
+X=np.zeros([1000,2])
+# Build a 3x1 SOM (3 clusters)
+som = SOM(m=3, n=3, dim=2, random_state=None,sigma=0.5)
+# Fit it to the data
+X[:,0]=x1
+X[:,1]=x2
+som.fit(X)
+
+
+predictions = som.predict(X)
+# Plot the results
+fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(5,7))
+
+print(som.weights)
+ax[0].scatter(x1,x2)
+ax[0].scatter(som.weights[:,0],som.weights[:,1])
+
+colors = ['red', 'green', 'blue','black','cyan','magenta','yellow','black','cyan','red']
+ax[1].scatter(x1, x2, c=predictions, cmap=ListedColormap(colors))
+ax[1].title.set_text('SOM Predictions')
+plt.show()
+
+
+
+#part 2: Iris Data
+iris = datasets.load_iris()
+iris_data = iris.data
+iris_label = iris.target
+print(iris_data.shape)
+
+# Extract just two features (just for ease of visualization)
+iris_data = iris_data[:, [0, 2]]
+
+# Build a 3x1 SOM (3 clusters)
+som = SOM(m=3, n=1, dim=2, random_state=1234)
+
+# Fit it to the data
+som.fit(iris_data)
+
+# Assign each datapoint to its predicted cluster
+predictions = som.predict(iris_data)
+# Plot the results
+fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(5,7))
+x = iris_data[:,0]
+y = iris_data[:,1]
+colors = ['red', 'green', 'blue','black','cyan','magenta','yellow']
+
+ax[0].scatter(x, y, c=iris_label, cmap=ListedColormap(colors))
+ax[0].title.set_text('Actual Classes')
+ax[1].scatter(x, y, c=predictions, cmap=ListedColormap(colors))
+ax[1].title.set_text('SOM Predictions')
+plt.show()
+
+
+
+#part 3: Groups of data
+n_samples=4000
+a=5
+centers = [(-a, -a), (a, a), (a, -a),(-a,a),(0,0)]
+X, y = make_blobs(n_samples=n_samples, centers=centers, shuffle=True, random_state=42)
+print(y)
+#X=np.random.rand(5000,2)
+print(X.shape)
+#y[y==3]=1
+#y[y==2]=0
+
+#Visualize the data
+som = SOM(m=5,n=5, dim=2, random_state=None,max_iter=100000,lr=1,sigma=0.1)
+som.fit(X,900000)
+print(som.cluster_centers_)
+print(som.weights)
+print(som.dim)
+# Assign each datapoint to its predicted cluster
+predictions = som.predict(X)
+
+# Plot the results
+fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(5,7))
+colors = ['red', 'green', 'blue','black','cyan','magenta','yellow']
+
+ax[0].scatter(X[:,0], X[:,1])
+ax[0].scatter(som.weights[:,0],som.weights[:,1])
+ax[0].title.set_text('Actual Classes')
+ax[1].scatter(X[:,0], X[:,1], c=predictions, cmap=ListedColormap(colors))
+ax[1].title.set_text('SOM Predictions')
+plt.show()
+
+
+#part 4: Groups of data par souris
+fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6,6))
+c=plt.ginput(10)
+c=np.array(c)
+c=c*25
+n_samples=1000
+a=5
+centers=c
+#centers = [(a, a), (0, a), (-a, 0),(-a,-a),(0,0)]
+X, y = make_blobs(n_samples=n_samples, centers=centers, shuffle=True, random_state=None)
+y[y==0]=0
+y[y==1]=0
+y[y==2]=0
+y[y==3]=1
+y[y==4]=1
+y[y==5]=1
+y[y==6]=2
+y[y==7]=2
+y[y==8]=2
+y[y==9]=2
+
+
+plt.figure()
+plt.scatter(X[:,0], X[:,1], c=y)
+plt.show()
+
+X1=X[y==0,:]
+#Visualize the data
+som = SOM(m=10,n=1, dim=2, random_state=None,max_iter=99999,lr=0.1,sigma=0.6)
+som.fit(X1,10000)
+centers1=som.cluster_centers_
+plt.figure()
+plt.scatter(X1[:,0], X1[:,1])
+plt.scatter(som.weights[:,0],som.weights[:,1])
+plt.show()
+
+X2=X[y==1,:]
+#Visualize the data
+som = SOM(m=10,n=1, dim=2, random_state=None,max_iter=99999,lr=0.1,sigma=0.6)
+som.fit(X2,10000)
+centers2=som.cluster_centers_
+plt.figure()
+plt.scatter(X2[:,0], X2[:,1])
+plt.scatter(som.weights[:,0],som.weights[:,1])
+plt.show()
+centers=np.array([np.array(centers1), np.array(centers2)])
+print(centers)
