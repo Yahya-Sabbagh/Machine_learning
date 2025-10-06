@@ -1,0 +1,94 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+from sklearn.datasets import make_blobs
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.inspection import DecisionBoundaryDisplay
+
+# ---------------------------------------------------------------
+# 1. GENERATE DATA
+# ---------------------------------------------------------------
+n_samples = 4000
+a = 3
+centers = [(-a, -a), (a, a), (a, -a), (-a, a), (0, 0)]
+X, y = make_blobs(n_samples=n_samples, centers=centers, shuffle=False, random_state=42)
+
+# Ensure class labels
+for i in range(len(centers)):
+    y[y==i] = i
+
+# Visualize the data
+plt.figure(figsize=(6,6))
+plt.scatter(X[:,0], X[:,1], c=y, cmap=ListedColormap(["red","green","blue","cyan","yellow"]))
+plt.title("Generated Blob Data")
+plt.show()
+
+# ---------------------------------------------------------------
+# 2. SPLIT DATA
+# ---------------------------------------------------------------
+X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.4, random_state=42)
+
+# ---------------------------------------------------------------
+# 3. TRAIN KNN
+# ---------------------------------------------------------------
+clf = KNeighborsClassifier(n_neighbors=21)
+clf.fit(X_train, y_train)
+predictions = clf.predict(X_test)
+
+# Evaluation
+print("Classification Report:\n", classification_report(y_test, predictions))
+print("Confusion Matrix:\n", confusion_matrix(y_test, predictions))
+
+# ---------------------------------------------------------------
+# 4. DECISION BOUNDARY
+# ---------------------------------------------------------------
+plt.figure(figsize=(12,6))
+
+# Decision boundary
+cmap1 = ListedColormap(["red","green","blue","cyan","yellow","magenta"])
+DecisionBoundaryDisplay.from_estimator(clf, X, response_method="predict", cmap=cmap1, alpha=0.3)
+
+# Scatter train/test points
+plt.scatter(X_train[:,0], X_train[:,1], c=y_train, marker='o', edgecolors='r', s=20, label='Train')
+plt.scatter(X_test[:,0], X_test[:,1], c=y_test, marker='x', edgecolors='k', s=20, label='Test')
+plt.title("KNN Decision Boundary")
+plt.legend()
+plt.show()
+
+# ---------------------------------------------------------------
+# 5. DECISION SURFACE + REJECT CLASS
+# ---------------------------------------------------------------
+resolution = 0.1
+x1_min, x1_max = X[:,0].min() - 1, X[:,0].max() + 1
+x2_min, x2_max = X[:,1].min() - 1, X[:,1].max() + 1
+xx1, xx2 = np.meshgrid(np.arange(x1_min, x1_max, resolution),
+                       np.arange(x2_min, x2_max, resolution))
+grid_points = np.c_[xx1.ravel(), xx2.ravel()]
+
+# Predictions on grid
+Z = clf.predict(grid_points)
+plt.figure(figsize=(12,5))
+
+# 5a. Regular decision surface
+plt.subplot(1,2,1)
+plt.scatter(xx1.ravel(), xx2.ravel(), c=Z, cmap=ListedColormap(["red","green","blue","cyan","yellow"]), s=25, alpha=0.5)
+plt.scatter(X_train[:,0], X_train[:,1], c=y_train, marker='o', edgecolors='b')
+plt.scatter(X_test[:,0], X_test[:,1], c=y_test, marker='x', edgecolors='k')
+plt.title("KNN Decision Surface")
+
+# 5b. “I don’t know” class based on probability threshold
+probs = clf.predict_proba(grid_points)
+cpwi = probs.argmax(axis=1)
+max_prob = probs.max(axis=1)
+tpr = 0.7
+cpwi[max_prob <= tpr] = y.max() + 1  # assign unknown class
+
+plt.subplot(1,2,2)
+cmap_extended = ListedColormap(["red","green","blue","cyan","yellow","magenta","gray"])
+plt.scatter(xx1.ravel(), xx2.ravel(), c=cpwi, cmap=cmap_extended, s=25, alpha=0.5)
+plt.scatter(X_train[:,0], X_train[:,1], c=y_train, marker='o', edgecolors='b')
+plt.scatter(X_test[:,0], X_test[:,1], c=y_test, marker='x', edgecolors='k')
+plt.title("KNN Decision Surface with 'I Don’t Know' Class")
+plt.show()
