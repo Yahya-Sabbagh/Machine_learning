@@ -1,0 +1,44 @@
+import pandas as pd
+
+df = pd.read_csv("train.csv")
+df.head()
+# Identify features (X) and target variable (Y)
+features = df.drop(columns=["Survived"]).columns.tolist()  # All columns except 'Survived'
+target_variable = "Survived"
+
+missing_values = df.isnull().sum()
+missing_values = missing_values[missing_values > 0]
+
+print("Features:", features)
+print("Target Variable:", target_variable)
+print("Missing Values:\n", missing_values)
+
+df.info()
+df.describe()
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+train = pd.read_csv('train.csv')
+
+# 1. Handle Missing Values
+
+train['Age'] = train['Age'].fillna(train['Age'].median())
+# Fill missing 'Embarked' with the most frequent value and assign back to 'Embarked'
+train['Embarked'] = train['Embarked'].fillna(train['Embarked'].mode()[0])
+
+# Optional: Drop rows where 'Survived' or other critical columns have missing values
+train.dropna(subset=['Survived'], inplace=True)
+
+# 2. Normalize Numerical Features
+scaler = StandardScaler()
+# List of numerical columns to normalize
+numerical_cols = ['Age', 'Fare']
+train[numerical_cols] = scaler.fit_transform(train[numerical_cols])
+
+# 3. Split the Dataset into Training and Test Sets
+X = train.drop('Survived', axis=1)  # Features
+y = train['Survived']  # Target variable
+
+# Split into 80% training and 20% testing
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+print(train.head())
