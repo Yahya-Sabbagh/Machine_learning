@@ -1,0 +1,134 @@
+import os
+import cv2
+import numpy as np
+import nibabel as nib
+import random
+import shutil
+
+#  Paths (fixed and clean)
+ct_folder = r'C:\Users\..\machine learning\ML DataSet-20250429T154515Z-001\ML DataSet \TCGA'
+seg_folder = r'C:\Users\..\machine learning\ML DataSet-20250429T154515Z-001\ML DataSet \segmentation'
+
+output_img_dir = r'C:\Users\Yahya\Desktop\UPEC\machine learning\Assignment 3\ML DataSet Assignment3-20250429T154515Z-001\ML DataSet Assignment3\dataset\images\train'
+output_lbl_dir = r'C:\Users\Yahya\Desktop\UPEC\machine learning\Assignment 3\ML DataSet Assignment3-20250429T154515Z-001\ML DataSet Assignment3\dataset\labels\train'
+
+os.makedirs(output_img_dir, exist_ok=True)
+os.makedirs(output_lbl_dir, exist_ok=True)
+
+#  Remap class IDs: 1 → 0 (Primary), 2 → 1 (Metastasis)
+def remap_mask(mask_slice):
+    mask_slice = np.where(mask_slice == 1, 0, mask_slice)
+    mask_slice = np.where(mask_slice == 2, 1, mask_slice)
+    return mask_slice
+
+#  Step 1: Process CT volumes and extract images + labels
+for file in os.listdir(ct_folder):
+    if file.endswith('.nii.gz'):
+        base = os.path.splitext(os.path.splitext(file)[0])[0]
+        ct_path = os.path.join(ct_folder, file)
+        seg_path = os.path.join(seg_folder, file)
+
+        ct = nib.load(ct_path).get_fdata()
+        seg = nib.load(seg_path).get_fdata()
+
+        for z in range(ct.shape[2]):
+            mask_slice = seg[:, :, z]
+            if not np.any(mask_slice):  # skip empty slices
+                continue
+
+            ct_slice = ct[:, :, z]
+            ct_slice_norm = ((ct_slice - ct_slice.min()) / (np.ptp(ct_slice)) * 255).astype(np.uint8)
+            image_filename = f'{base}_{z}.png'
+            image_path = os.path.join(output_img_dir, image_filename)
+            cv2.imwrite(image_path, ct_slice_norm)
+
+            # Contours
+            mask_slice = remap_mask(mask_slice)
+            label_path = os.path.join(output_lbl_dir, image_filename.replace('.png', '.txt'))
+            height, width = mask_slice.shape
+
+            label_lines = []
+            for cls_id in [0, 1]:  # Primary Tumor and Metastasis
+                binary_mask = (mask_slice == cls_id).astype(np.uint8)
+                if np.sum(binary_mask) == 0:
+                    continue
+
+                contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                for contour in contours:
+                    if len(contour) < 3:
+                        continue
+                    contour = contour.squeeze()
+                    if contour.ndim != 2:
+                        continue
+
+                    x = contour[:, 0]
+                    y = contour[:, 1]
+                    x_center = np.mean(x) / width
+                    y_center = np.mean(y) / height
+                    bbox_w = (np.max(x) - np.min(x)) / width
+                    bbox_h = (np.max(y) - np.min(y)) / height
+
+                    points = ["{:.6f} {:.6f}".format(px / width, py / height) for px, py in zip(x, y)]
+                    points_str = " ".join(points)
+                    label_lines.append(f"{cls_id} {x_center:.6f} {y_center:.6f} {bbox_w:.6f} {bbox_h:.6f} {points_str}")
+
+            with open(label_path, 'w') as f:
+                f.write('\n'.join(label_lines))
+
+print(" Slices and labels extracted successfully!")
+
+# Step 2: Format labels (remapping already done above, nothing extra needed here)
+
+#  Step 3: Organize into datasets folder
+
+# Paths
+datasets_path = r"C:\..\ML DataSet Assignment3-20250429T154515Z-001\ML DataSet\dataset"
+images_path = os.path.join(datasets_path, "images", "train")
+labels_path = os.path.join(datasets_path, "labels", "train")
+
+images_out = os.path.join(datasets_path, "images")
+labels_out = os.path.join(datasets_path, "labels")
+
+# Create folders for val and test
+for split in ['val', 'test']:
+    os.makedirs(os.path.join(images_out, split), exist_ok=True)
+    os.makedirs(os.path.join(labels_out, split), exist_ok=True)
+
+# Get all image files
+image_files = [f for f in os.listdir(images_path) if f.endswith('.png')]
+
+# Shuffle and split
+random.shuffle(image_files)
+total_images = len(image_files)
+train_size = int(0.8 * total_images)
+val_size = int(0.1 * total_images)
+test_size = total_images - train_size - val_size  # remainder goes to test
+
+train_files = image_files[:train_size]
+val_files = image_files[train_size:train_size + val_size]
+test_files = image_files[train_size + val_size:]
+
+# Move files function
+def move_files(file_list, split_name):
+    for img_file in file_list:
+        label_file = img_file.replace('.png', '.txt')
+
+        src_img = os.path.join(images_path, img_file)
+        dst_img = os.path.join(images_out, split_name, img_file)
+
+        src_lbl = os.path.join(labels_path, label_file)
+        dst_lbl = os.path.join(labels_out, split_name, label_file)
+
+        if os.path.exists(src_img) and os.path.exists(src_lbl):
+            shutil.move(src_img, dst_img)
+            shutil.move(src_lbl, dst_lbl)
+
+# Move validation and test files
+move_files(val_files, "val")
+move_files(test_files, "test")
+
+print(f" Dataset organized successfully!")
+print(f"Total images: {total_images}")
+print(f"Training images: {len(train_files)}")
+print(f"Validation images: {len(val_files)}")
+print(f"Testing images: {len(test_files)}")
