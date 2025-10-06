@@ -1,0 +1,132 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+from sklearn.datasets import make_blobs
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics.pairwise import rbf_kernel
+from sklearn.svm import SVC
+from sklearn_som.som import SOM
+
+# ---------------------------------------------------------------
+# FUNCTION: Plot Confusion Matrix
+# ---------------------------------------------------------------
+def plot_confusion_matrix(y_true, y_pred, cmap="coolwarm"):
+    cm = confusion_matrix(y_true, y_pred)
+    plt.imshow(cm, interpolation="nearest", cmap=cmap)
+    plt.colorbar()
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            plt.text(j, i, cm[i, j], ha="center", va="center",
+                     color="white" if cm[i, j] > cm.max() / 2 else "black",
+                     fontsize=12, fontweight="bold")
+    plt.xlabel("Predicted")
+    plt.ylabel("True")
+    plt.title("Confusion Matrix")
+    plt.show()
+
+# ---------------------------------------------------------------
+# 1. GENERATE DATA
+# ---------------------------------------------------------------
+n_samples = 4000
+a = 3
+centers = [(-a, -a),(a, a), (a, -a),(-a, a),(0, 0)]
+X, y = make_blobs(n_samples=n_samples, centers=centers, shuffle=False, random_state=42)
+
+# Assign class labels
+y[y==0] = 0
+y[y==1] = 1
+y[y==2] = 2
+y[y==3] = 3
+y[y==4] = 4
+
+Nbclasses = y.max() + 1
+centers = np.array(centers)
+
+# Visualize data
+plt.figure()
+colors = ['red', 'green', 'blue','yellow','cyan','magenta']
+cmap1 = ListedColormap(colors[:Nbclasses])
+plt.scatter(X[:,0], X[:,1], c=y, cmap=cmap1)
+plt.title("Generated Data")
+plt.show()
+
+# ---------------------------------------------------------------
+# 2. SPLIT DATA
+# ---------------------------------------------------------------
+X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.4, random_state=42)
+
+# ---------------------------------------------------------------
+# 3. TRAIN SOM TO FIND CENTERS
+# ---------------------------------------------------------------
+m1, n1 = 5, 5
+dim = X_train.shape[1]
+som = SOM(m=m1, n=n1, dim=dim, random_state=None, max_iter=50000, lr=2)
+som.fit(X_train)
+som_centers = som.weights
+
+# ---------------------------------------------------------------
+# 4. RBF KERNEL + SVM
+# ---------------------------------------------------------------
+gamma = 0.1
+Z_train = rbf_kernel(X_train, som_centers, gamma=gamma)
+Z_test = rbf_kernel(X_test, som_centers, gamma=gamma)
+
+clf = SVC(C=1, kernel="linear", probability=True, tol=1e-3)
+clf.fit(Z_train, y_train)
+
+# Predict & evaluate
+predictions = clf.predict(Z_test)
+score = clf.score(Z_test, y_test)
+print("Confusion Matrix RBF-SVM:\n", confusion_matrix(y_test, predictions))
+print("Accuracy:", score)
+plot_confusion_matrix(y_test, predictions)
+
+# ---------------------------------------------------------------
+# 5. DECISION SURFACE + REJECT CLASS
+# ---------------------------------------------------------------
+resolution = 0.1
+x1_min, x1_max = X[:,0].min()-1, X[:,0].max()+1
+x2_min, x2_max = X[:,1].min()-1, X[:,1].max()+1
+xx1, xx2 = np.meshgrid(np.arange(x1_min, x1_max, resolution),
+                       np.arange(x2_min, x2_max, resolution))
+
+# Predict grid points
+Z_grid = rbf_kernel(np.c_[xx1.ravel(), xx2.ravel()], som_centers, gamma=gamma)
+Y_grid = clf.predict(Z_grid)
+
+# Create “I don't know” class using probability threshold
+probs = clf.predict_proba(Z_grid)
+cpwi = probs.argmax(axis=1)
+max_prob = probs.max(axis=1)
+tpr = 0.7
+cpwi[max_prob <= tpr] = Nbclasses  # assign unknown class
+
+# Plot decision surfaces
+plt.figure(figsize=(12,5))
+
+# Regular predictions
+plt.subplot(1,2,1)
+plt.scatter(xx1.ravel(), xx2.ravel(), c=Y_grid, cmap=cmap1, s=25, alpha=0.5)
+plt.scatter(X_test[:,0], X_test[:,1], c=y_test, edgecolors='k')
+plt.scatter(som_centers[:,0], som_centers[:,1], marker='X', s=40, color='m')
+plt.title("Decision Surface without Reject Class")
+
+# With “I don't know”
+plt.subplot(1,2,2)
+cmap_extended = ListedColormap(colors[:Nbclasses+1])
+plt.scatter(xx1.ravel(), xx2.ravel(), c=cpwi, cmap=cmap_extended, s=25, alpha=0.5)
+plt.scatter(X_test[:,0], X_test[:,1], c=y_test, edgecolors='k')
+plt.scatter(som_centers[:,0], som_centers[:,1], marker='X', s=40, color='m')
+plt.title("Decision Surface with Reject Class (Threshold=0.7)")
+
+plt.show()
+
+# Confusion matrix with reject class
+Z_test_pred_probs = clf.predict_proba(Z_test)
+cpwi_test = Z_test_pred_probs.argmax(axis=1)
+max_prob_test = Z_test_pred_probs.max(axis=1)
+cpwi_test[max_prob_test <= tpr] = Nbclasses
+cm_reject = confusion_matrix(y_test, cpwi_test)
+print("Confusion Matrix with Reject Class:\n", cm_reject)
+print("Number of unclassified points:", cm_reject[:, -1].sum())
