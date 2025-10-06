@@ -1,0 +1,116 @@
+#Create artificial data se
+import numpy as np
+from matplotlib.colors import ListedColormap
+from sklearn.datasets import make_blobs
+from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
+#from Lab7_SVM import plot_decision_regions
+from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from sklearn.metrics import confusion_matrix
+from sklearn.inspection import DecisionBoundaryDisplay
+
+nb_clusters=3
+n_samples=1000
+centers = [(-1, -0), (3, 1), (0, -4)]
+X, y = make_blobs(n_samples=n_samples, centers=centers, shuffle=False, random_state=42)
+
+
+"""
+nb_clusters=4
+n_samples=1000
+#X,y = make_blobs(n_samples = 400, n_features = 2, centers = 2, cluster_std = 2)
+centers = [(-2, -2), (6, 3), (1, -4),(0,6)]
+X, y = make_blobs(n_samples=n_samples, centers=centers, shuffle=False, random_state=42)
+"""
+#Visualize the data
+plt.scatter(X[:,0], X[:,1])
+plt.show()
+
+#Build and train the model
+model = KMeans(n_clusters=3)
+model.fit(X)
+
+#See the predictions
+print(model.labels_)
+print(model.cluster_centers_)
+M_C=model.cluster_centers_
+
+#PLot the predictions against the original data set
+f, (ax1, ax2) = plt.subplots(1, 2, sharey=True,figsize=(10,6))
+ax1.set_title('Our Model')
+ax1.scatter(X[:,0], X[:,1],c=model.labels_)
+ax1.scatter(M_C[:,0], M_C[:,1],marker='X',s=40,color='r')
+ax2.set_title('Original Data')
+ax2.scatter(X[:,0], X[:,1],c=y)
+plt.show()
+
+###### Classification after clustering using predictions as classes
+y=model.labels_
+nbclasses=y.max()+1
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=0)
+
+# SVM
+#clf = SVC(kernel='linear', random_state=0, gamma=0.20, C=10.0,probability=True)
+clf = SVC(kernel='rbf', random_state=0, gamma=0.1, C=10.0,probability=True)
+#clf = SVC(kernel='poly', random_state=0, gamma=0.6, C=1.0,probability=True)
+
+#MLP : 4 hidden layers containing 5,7 3 10 neurons
+#attention le MLP ne donne pas une probabilite a la sortie
+
+#clf = MLPClassifier(solver='lbfgs', hidden_layer_sizes=(5,7,3,10),
+#                    activation='tanh',
+#                    alpha=1e-5,
+#                    max_iter=100,
+#                    random_state=10,
+#                 )
+
+clf.fit(X_train, y_train)
+plt.figure()
+DecisionBoundaryDisplay.from_estimator(
+		clf,
+		X,
+		response_method="predict",
+		cmap=plt.cm.Spectral,
+		alpha=0.8,
+	)
+plt.scatter(X_test[:, 0], X_test[:, 1],
+			c=y_test,
+			s=20, edgecolors="k")
+plt.scatter(X_train[:, 0], X_train[:, 1],
+			c=y_train,
+			s=20, edgecolors="r")
+predictions=clf.predict(X_test)
+print(confusion_matrix(y_test, predictions))
+plt.show()
+
+#Creating class "I dont know" over the grid
+resolution=0.1
+# plot the decision surface
+x1_min, x1_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+x2_min, x2_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+xx1, xx2 = np.meshgrid(np.arange(x1_min, x1_max, resolution),
+					   np.arange(x2_min, x2_max, resolution))
+Z = clf.predict(np.array([xx1.ravel(), xx2.ravel()]).T)
+
+plt.subplot(121)
+cmap1=ListedColormap(["red","green","blue","yellow","cyan","black","magenta"])
+plt.scatter(xx1[:],xx2[:],c=Z,cmap=cmap1,alpha=0.2)
+plt.scatter(X_test[:,0],X_test[:,1],c=y_test,marker='o',edgecolors='k')
+plt.scatter(X_train[:,0],X_train[:,1],c=y_train,marker='o',edgecolors='r')
+
+
+pwi=clf.predict_proba(np.array([xx1.ravel(), xx2.ravel()]).T)
+cpwi=pwi.argmax(axis=1)
+maxpr=pwi.max(axis=1)
+tpr=0.7
+cpwi[maxpr<=tpr]=nbclasses #class i dont know
+
+plt.subplot(122)
+cmap1=ListedColormap(["red","green","blue","yellow","cyan","black","magenta"])
+plt.scatter(xx1[:],xx2[:],c=cpwi,cmap=cmap1,alpha=0.2)
+plt.scatter(X_test[:,0],X_test[:,1],c=y_test,marker='o',edgecolors='k')
+plt.scatter(X_train[:,0],X_train[:,1],c=y_train,marker='o',edgecolors='r')
+plt.show()
