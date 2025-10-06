@@ -1,0 +1,129 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import Perceptron, SGDClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.metrics.pairwise import rbf_kernel
+from sklearn_som.som import SOM
+import tensorflow as tf
+from tensorflow.keras import models
+from tensorflow.keras.layers import Dense
+
+# --------------------------
+# Utility function: Confusion matrix plotting
+# --------------------------
+def plot_confusion_matrix(y_true, y_pred, title="Matrice de Confusion", cmap="coolwarm", subplot_position=111):
+    cm = confusion_matrix(y_true, y_pred)
+    plt.subplot(subplot_position)
+    im = plt.imshow(cm, interpolation="nearest", cmap=cmap)
+    plt.colorbar(im)
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            plt.text(j, i, cm[i, j], ha="center", va="center",
+                     color="white" if cm[i, j] > cm.max() / 2 else "black",
+                     fontsize=12, fontweight="bold")
+    plt.xlabel("Prédictions")
+    plt.ylabel("Vraies classes")
+    plt.title(title)
+    plt.xticks(np.arange(len(set(y_true))))
+    plt.yticks(np.arange(len(set(y_true))))
+    plt.tight_layout()
+
+# --------------------------
+# 1 Load and prepare data
+# --------------------------
+iris = load_iris()
+X = iris.data
+y = iris.target
+Nbclasses = np.max(y) + 1
+
+# Normalize
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# PCA: keep 95% variance
+pca = PCA(n_components=X.shape[1])
+X_pca = pca.fit_transform(X_scaled)
+cumsum_var = pca.explained_variance_ratio_.cumsum()
+n_components = np.where(cumsum_var >= 0.95)[0][0] + 1
+X = X_pca[:, :n_components]
+
+# Train/Test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+
+# --------------------------
+# 2 Classical ML classifiers
+# --------------------------
+classifiers = {
+    "SVM RBF": SVC(kernel='rbf', gamma=0.1, C=1, probability=True),
+    "SVM Linear": SVC(kernel='linear', C=1, probability=True),
+    "Perceptron": Perceptron(tol=1e-15, eta0=0.001, max_iter=10000),
+    "SGDClassifier": SGDClassifier(max_iter=1000, tol=1e-5, random_state=0),
+    "MLP": MLPClassifier(solver='lbfgs', hidden_layer_sizes=(20,10,10), activation='tanh', max_iter=400),
+    "KNN": KNeighborsClassifier(n_neighbors=5)
+}
+
+plt.figure(figsize=(15,10))
+for i, (name, clf) in enumerate(classifiers.items(), 1):
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
+    print(f"=== {name} ===")
+    print(confusion_matrix(y_test, y_pred))
+    print(classification_report(y_test, y_pred))
+    plot_confusion_matrix(y_test, y_pred, title=f"Matrice de Confusion {name}", subplot_position=230+i)
+
+plt.show()
+
+# --------------------------
+# 3 Feedforward Neural Network (Dense)
+# --------------------------
+input_shape = [X_train.shape[1]]
+clf_nn = models.Sequential([
+    Dense(8, activation='sigmoid', input_shape=input_shape),
+    Dense(8, activation='sigmoid'),
+    Dense(Nbclasses, activation='softmax')
+])
+clf_nn.compile(optimizer='rmsprop',
+               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
+               metrics=['accuracy'])
+clf_nn.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=300, verbose=0)
+
+pred_nn = clf_nn.predict(X_test)
+pred_nn_class = pred_nn.argmax(axis=1)
+print("=== Feedforward NN ===")
+print(confusion_matrix(y_test, pred_nn_class))
+print(classification_report(y_test, pred_nn_class))
+plt.figure()
+plot_confusion_matrix(y_test, pred_nn_class, "Matrice de Confusion Feedforward NN")
+plt.show()
+
+# --------------------------
+# 4 SOM + RBF + Linear SVM
+# --------------------------
+m, n = 5, 5
+som = SOM(m=m, n=n, dim=n_components, max_iter=20000, lr=1)
+som.fit(X_train)
+centers = som.weights
+
+gamma = 0.1
+K_train = rbf_kernel(X_train, centers, gamma=gamma)
+K_test = rbf_kernel(X_test, centers, gamma=gamma)
+
+clf_som = SVC(kernel='linear', C=1, probability=True)
+clf_som.fit(K_train, y_train)
+y_pred_som = clf_som.predict(K_test)
+
+print("=== SOM + RBF + SVM ===")
+print(confusion_matrix(y_test, y_pred_som))
+print(classification_report(y_test, y_pred_som))
+plt.figure()
+plot_confusion_matrix(y_test, y_pred_som, "Matrice de Confusion SOM + RBF + SVM")
+plt.show()
