@@ -1,0 +1,40 @@
+import pandas as pd
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+
+df = pd.read_csv("spam.csv", encoding="latin-1")
+
+print(" First 5 rows of the dataset:")
+print(df.head())
+
+print("\n Spam vs. Ham count:")
+print(df["v1"].value_counts())
+
+print("\n Example Spam Messages:")
+print(df[df["v1"] == "spam"]["v2"].sample(3, random_state=42).tolist())
+
+print("\n Example Ham Messages:")
+print(df[df["v1"] == "ham"]["v2"].sample(3, random_state=42).tolist())
+
+# Optional: Visualize most common words in spam and ham messages
+spam_text = " ".join(df[df["v1"] == "spam"]["v2"].dropna())
+ham_text = " ".join(df[df["v1"] == "ham"]["v2"].dropna())
+
+# Generate Word Clouds
+spam_wordcloud = WordCloud(width=800, height=400, background_color="black", colormap="Reds").generate(spam_text)
+ham_wordcloud = WordCloud(width=800, height=400, background_color="black", colormap="Blues").generate(ham_text)
+
+# Plot the Word Clouds
+plt.figure(figsize=(16, 6))
+
+plt.subplot(1, 2, 1)
+plt.imshow(spam_wordcloud, interpolation="bilinear")
+plt.axis("off")
+plt.title("Most Common Words in Spam Messages", fontsize=14)
+
+plt.subplot(1, 2, 2)
+plt.imshow(ham_wordcloud, interpolation="bilinear")
+plt.axis("off")
+plt.title("Most Common Words in Ham Messages", fontsize=14)
+
+plt.show()
