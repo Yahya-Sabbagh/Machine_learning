@@ -1,0 +1,120 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+from sklearn.datasets import make_blobs
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import Perceptron, SGDClassifier
+from sklearn.metrics import classification_report, confusion_matrix
+
+# -----------------------------------------------------------
+#  Function to plot the Perceptron / Adaline decision boundary
+# -----------------------------------------------------------
+def plot_decision_boundary(clf, X, y, title):
+    plt.figure(figsize=(6, 6))
+    plt.scatter(X[:, 0], X[:, 1], c=y, cmap=ListedColormap(['blue', 'yellow']), edgecolor='k')
+
+    # Create grid
+    h = 0.01
+    x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
+    y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
+    xx = np.arange(x_min, x_max, h)
+    
+    # Decision boundary line
+    w1, w2 = clf.coef_[0]
+    w0 = clf.intercept_[0]
+    x2 = (-w0 - w1 * xx) / w2
+    plt.plot(xx, x2, 'r-', linewidth=2)
+
+    plt.title(title)
+    plt.xlabel("Feature 1")
+    plt.ylabel("Feature 2")
+    plt.xlim(x_min, x_max)
+    plt.ylim(y_min, y_max)
+    plt.grid(True)
+    plt.show()
+
+
+# -----------------------------------------------------------
+#  Step 1: Create synthetic dataset interactively or automatically
+# -----------------------------------------------------------
+
+# Uncomment this if you want to select centers manually:
+# fig, ax = plt.subplots(figsize=(6, 6))
+# c = np.array(plt.ginput(10)) * 25  # click 10 points on plot
+# plt.close()
+
+# For reproducibility, we’ll use fixed centers instead:
+a = 5
+centers = [(a, a), (0, a), (-a, 0), (-a, -a), (0, 0),
+           (a, -a), (a, 0), (-a, a), (2*a, 0), (0, -2*a)]
+
+X, y = make_blobs(n_samples=1000, centers=centers, random_state=42)
+
+# Group clusters into 2 large classes (0 and 1)
+y[:5 * (len(X)//10)] = 0
+y[5 * (len(X)//10):] = 1
+
+# Visualize initial data
+plt.figure(figsize=(6, 6))
+plt.scatter(X[:, 0], X[:, 1], c=y, cmap=ListedColormap(['red', 'green']))
+plt.title("Generated Data (Two Classes)")
+plt.show()
+
+
+# -----------------------------------------------------------
+#  Step 2: Train a Linear Classifier (Perceptron / Adaline)
+# -----------------------------------------------------------
+
+# Choose model: Perceptron or Adaline (SGD)
+# clf = Perceptron(tol=1e-15, eta0=0.1, max_iter=20000, random_state=0)
+clf = SGDClassifier(max_iter=1000, tol=1e-15, random_state=10)
+
+# Split dataset (70% train / 30% test)
+X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.3, random_state=42)
+
+# Train the classifier
+clf.fit(X_train, y_train)
+
+# Model weights
+print("Model parameters:")
+print(f"Intercept (w0): {clf.intercept_[0]:.4f}")
+print(f"Weight w1: {clf.coef_[0][0]:.4f}")
+print(f"Weight w2: {clf.coef_[0][1]:.4f}\n")
+
+
+# -----------------------------------------------------------
+#  Step 3: Evaluate model performance
+# -----------------------------------------------------------
+y_pred = clf.predict(X_test)
+
+print("Classification Report:")
+print(classification_report(y_test, y_pred))
+
+print("Confusion Matrix:")
+print(confusion_matrix(y_test, y_pred))
+
+accuracy = clf.score(X_test, y_test)
+print(f" Accuracy: {accuracy:.4f}\n")
+
+
+# -----------------------------------------------------------
+#  Step 4: Visualize Decision Boundaries
+# -----------------------------------------------------------
+plot_decision_boundary(clf, X_train, y_train, title="Decision Boundary (Training Set)")
+plot_decision_boundary(clf, X_test, y_test, title="Decision Boundary (Testing Set)")
+
+# Full grid visualization
+h = 0.05
+x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
+y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
+xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+
+Z = clf.predict(np.c_[xx.ravel(), yy.ravel()]).reshape(xx.shape)
+
+plt.figure(figsize=(7, 7))
+plt.contourf(xx, yy, Z, cmap=ListedColormap(["red", "green"]), alpha=0.4)
+plt.scatter(X_train[:, 0], X_train[:, 1], c=y_train, edgecolor="magenta", label="Train", s=40)
+plt.scatter(X_test[:, 0], X_test[:, 1], c=y_test, edgecolor="black", label="Test", s=40)
+plt.title(f"Final Classification Map\nAccuracy = {accuracy:.3f}")
+plt.legend()
+plt.show()
