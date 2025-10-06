@@ -1,0 +1,203 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+from sklearn import svm
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import confusion_matrix
+from sklearn import datasets
+from sklearn.inspection import DecisionBoundaryDisplay
+from sklearn.datasets import load_breast_cancer, load_digits, load_iris, load_diabetes, make_blobs
+import matplotlib.pyplot as plt
+
+
+#2 classes
+#a=1.4
+#X, y = make_blobs(n_samples=400, centers=[(a,a),(-a,-a)], random_state=10)
+
+#3 classes
+a=3
+X, y = make_blobs(n_samples=1000, centers=[ (1,2), (-3,4), (4, 5)], random_state=10)
+
+
+#4 classes
+#a=2
+#X, y = make_blobs(n_samples=1000, centers=[(a,a),(-a,-a),(-a,a),(a,-a)], random_state=10)
+
+"""
+# 5 classes
+n_samples=2000
+a=3
+centers = [(-a, -a), (a, a), (a, -a),(-a,a),(0,0)]
+X, y = make_blobs(n_samples=n_samples, centers=centers, shuffle=False, random_state=42)
+y[y==0]=0
+y[y==1]=1
+y[y==2]=2
+y[y==3]=3
+y[y==4]=4
+"""
+"""
+#part : Groups of data using mouse
+fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6,6))
+c=plt.ginput(10)
+c=np.array(c)
+c=c*25
+print(c)
+n_samples=1000
+a=5
+centers=c
+#centers = [(a, a), (0, a), (-a, 0),(-a,-a),(0,0)]
+X, y = make_blobs(n_samples=n_samples, centers=centers, shuffle=True, random_state=42)
+print(X.shape)
+print(X)
+y[y==0]=0
+y[y==1]=0
+y[y==2]=1
+y[y==3]=1
+y[y==4]=2
+y[y==5]=2
+y[y==6]=3
+y[y==7]=3
+y[y==8]=4
+y[y==9]=4
+"""
+
+"""
+# Load the datasets cancer
+cancer = load_breast_cancer()
+print(cancer.data.shape)
+print(cancer.target.shape)
+X = cancer.data#[:,[0,1]]
+y = cancer.target
+print(cancer.feature_names)
+print(X.shape)
+
+X=X[:,[0,1]]
+"""
+plt.figure()
+colors = (['red','green','blue','yellow','cyan','magenta'])
+cmap = ListedColormap(colors[:len(np.unique(y))])
+plt.scatter(X[:,0], X[:,1],c=y,cmap=cmap)
+plt.show()
+#Build the model
+clf = svm.SVC(kernel='rbf',gamma=1, C=1,probability=True)
+#Kernel=Linear, poly or RBF
+#Gamma is for rbf #exp(-gamma*(x-mu)^2)  and C is for all
+
+# Trained the model
+X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.2)
+clf.fit(X_train, y_train)
+predictions = clf.predict(X_test)
+print(confusion_matrix(y_test, predictions))
+score = clf.score(X_test, y_test)
+print(score)
+
+# Plot Decision Boundary Internal function only used for R2
+DecisionBoundaryDisplay.from_estimator(
+		clf,
+		X,
+		response_method="predict",
+		cmap=plt.cm.Spectral,
+		alpha=0.5,
+		xlabel='x1',
+		ylabel='x2',
+	)
+# Scatter plot
+plt.scatter(X_train[:, 0], X_train[:, 1],
+			c=y_train,
+			s=30, edgecolors="r")
+plt.scatter(X_test[:, 0], X_test[:, 1],
+			c=y_test,
+			s=30, edgecolors="k")
+plt.show()
+
+#classification of the whole grid only using R2
+
+colors = ['red', 'green', 'blue','yellow','cyan','magenta']
+#Creating class I dont know over all the grid
+resolution=0.1
+# plot the decision surface
+x1_min, x1_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+x2_min, x2_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+xx1, xx2 = np.meshgrid(np.arange(x1_min, x1_max, resolution),
+					   np.arange(x2_min, x2_max, resolution))
+Y = clf.predict(np.array([xx1.ravel(), xx2.ravel()]).T)
+plt.figure()
+plt.subplot(121)
+cmap = ListedColormap(colors[:len(np.unique(Y))])
+plt.scatter(xx1[:],xx2[:],c=Y,cmap=cmap,alpha=0.1)
+plt.scatter(X_test[:,0],X_test[:,1],c=y_test,marker='o',edgecolors='k')
+plt.scatter(X_train[:,0],X_train[:,1],c=y_train,marker='o',edgecolors='r')
+
+
+
+pwi=clf.predict_proba(np.array([xx1.ravel(), xx2.ravel()]).T)
+cpwi=pwi.argmax(axis=1)
+maxpr=pwi.max(axis=1)
+tpr=0.7
+cpwi[maxpr<=tpr]=y.max()+1 #class i dont know
+
+plt.subplot(122)
+cmap = ListedColormap(colors[:len(np.unique(cpwi))])
+plt.scatter(xx1[:],xx2[:],c=cpwi,cmap=cmap,alpha=0.1)
+plt.scatter(X_test[:,0],X_test[:,1],c=y_test,marker='o',edgecolors='k')
+plt.scatter(X_train[:,0],X_train[:,1],c=y_train,marker='o',edgecolors='r')
+''#plt.show()
+
+for i in range(10):
+	p=plt.ginput(1)
+	pwi=clf.predict_proba(p)
+	print(pwi)
+	classe=pwi.argmax(axis=1)
+	if pwi.max()>=tpr:
+		print('classe is',classe)
+	else:
+		print('class is I do not know')
+
+plt.show()
+
+
+""""
+# importing libraries Another application
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_circles
+from mpl_toolkits.mplot3d import Axes3D
+
+# generating data
+X, y = make_circles(n_samples = 500, noise = 0.05)
+
+# visualizing data
+plt.scatter(X[:, 0], X[:, 1], c = y, marker = '.')
+plt.show()
+# adding a new dimension to X
+X1 = X[:, 0].reshape((-1, 1))
+X2 = X[:, 1].reshape((-1, 1))
+X3 = (X1**2 + X2**2)
+X = np.hstack((X, X3))
+
+# visualizing data in higher dimension
+fig = plt.figure()
+axes = fig.add_subplot(111, projection = '3d')
+axes.scatter(X1, X2, X1**2 + X2**2, c = y, depthshade = True)
+plt.show()
+
+# create support vector classifier using a linear kernel
+clf = svm.SVC(kernel = 'linear')
+clf.fit(X, y)
+w = clf.coef_
+b = clf.intercept_ #b
+
+# plotting the separating hyperplane
+x1 = X[:, 0].reshape((-1, 1))
+x2 = X[:, 1].reshape((-1, 1))
+x1, x2 = np.meshgrid(x1, x2)
+x3 = -(w[0][0]*x1 + w[0][1]*x2 + b) / w[0][2]
+#plane: ax1+bx2+cx3+b=0
+fig = plt.figure()
+axes2 = fig.add_subplot(111, projection = '3d')
+axes2.scatter(X1, X2, X1**2 + X2**2, c =y, depthshade = True)
+axes1 = fig.gca()
+axes1.plot_surface(x1, x2, x3, alpha = 0.8)
+plt.show()
+"""
