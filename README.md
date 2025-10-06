@@ -1,39 +1,70 @@
-# Tumor Segmentation
+# Machine Learning Projects Repository
 
-This directory contains resources and pipelines related to tumor segmentation using machine learning techniques. It is organized to facilitate dataset preparation, preprocessing, exploratory analysis, and the conversion of labels for YOLO-based segmentation models.
+Welcome to the Machine Learning repository! This collection contains various machine learning experiments, models, and pipelines implemented in Python, primarily for educational and research purposes.
 
-## Structure
+## Repository Structure
 
-- **Dataset Preparation and YOLO Label Conversion Pipeline**  
-  Scripts and notebooks for preparing datasets and converting segmentation labels into the YOLO format, enabling compatibility with YOLO-based segmentation models.
+- **Tumor Segmentation/**  
+  Contains scripts and notebooks for tumor segmentation tasks using machine learning and deep learning techniques.
 
-- **Data Preprocessing and Train-Test Split**  
-  Tools and scripts for preprocessing medical images, normalizing data, and splitting datasets into training and testing subsets.
+- **Data Preprocessing and Train-Test Split/**  
+  Resources for preprocessing datasets and splitting them into training and testing sets.
 
-- **Exploratory Data Analysis (EDA)**  
-  Notebooks and scripts for visualizing and analyzing the dataset to gain insights into image characteristics, label distribution, and segmentation challenges.
+- **Exploratory Data Analysis (EDA)/**  
+  Notebooks and scripts for performing exploratory data analysis to understand the dataset’s characteristics.
 
-## Getting Started
+- **KNN/**  
+  Implementation and experiments with the K-Nearest Neighbors algorithm.
 
-1. **Clone the Repository:**  
-   ```bash
-   git clone https://github.com/Yahya-Sabbagh/Machine_learning.git
-   cd Machine_learning/Tumor Segmentation
-   ```
+- **Kmeans/**  
+  K-means clustering algorithm scripts and notebooks.
 
-2. **Explore the Pipelines:**  
-   - Begin with the dataset preparation and label conversion scripts.
-   - Use the preprocessing tools to clean and split your data.
-   - Perform exploratory data analysis to better understand your dataset.
+- **MLP – Multilayer Perceptron/**  
+  Deep learning models using multilayer perceptrons for classification/regression tasks.
 
-## Purpose
+- **Perceptron and Adaline Classifiers – Visual Decision Boundary Analysis/**  
+  Visualizations and code for understanding decision boundaries of Perceptron and Adaline classifiers.
 
-This project aims to streamline the tumor segmentation workflow, from raw data preparation to model-ready datasets, and provide robust scripts for data investigation and YOLO label generation.
+- **RBF/**  
+  Experiments and code related to Radial Basis Function (RBF) networks.
 
-## Contributions
+- **SOM/**  
+  Self-Organizing Maps implementations and experiments.
 
-Feel free to open issues or pull requests to improve any part of the pipeline or add new resources related to medical image segmentation.
+- **SOM + RBF-SVM/**  
+  Combining SOM with RBF-SVM approaches.
+
+- **SVM/**  
+  Support Vector Machine implementations for various tasks.
+
+- **full pipeline/**  
+  End-to-end machine learning pipeline integrating preprocessing, modeling, and evaluation.
+
+- **scikit-learn MLP/**  
+  Using scikit-learn’s MLPClassifier for neural network modeling.
+
+## How to Use
+
+1. **Clone the repository**
+    ```bash
+    git clone https://github.com/Yahya-Sabbagh/Machine_learning.git
+    ```
+2. **Install dependencies**  
+   Most projects use Python libraries like `numpy`, `pandas`, `scikit-learn`, `matplotlib`, and `seaborn`. Install them using:
+    ```bash
+    pip install numpy pandas scikit-learn matplotlib seaborn
+    ```
+3. **Explore individual folders**  
+   Each folder contains scripts or notebooks. Read the folder-specific README (if available) for more details.
+
+## Contributing
+
+Feel free to fork the repository, make improvements, and submit pull requests.
 
 ## License
 
-See the root of the repository for licensing information.
+This project is open-source and available under the MIT License.
+
+## Author
+
+Yahya Sabbagh
